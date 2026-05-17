@@ -14,9 +14,21 @@ const predictionRoutes = require('./routes/predictions');
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-// ── Middleware ──────────────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: function(origin, callback) {
+    // Allow local dev servers, specified production origin, or non-prod environment requests
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS — blocked by production security rules'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
