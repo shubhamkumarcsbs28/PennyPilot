@@ -108,3 +108,73 @@ exports.updateMe = async (req, res, next) => {
     next(err);
   }
 };
+
+/**
+ * POST /api/auth/forgot-password
+ */
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User with this email does not exist' });
+    }
+
+    // Generate 6-digit verification code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store in DB with 10-minute expiry
+    user.resetPasswordToken = code;
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save();
+
+    // Print to server console for development testing
+    console.log(`🔑 PASSWORD RESET CODE for ${email}: ${code}`);
+
+    res.json({
+      message: 'Password reset code generated successfully',
+      devCode: code, // For easy development testing
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/auth/reset-password
+ */
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ message: 'Email, code, and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findOne({
+      email,
+      resetPasswordToken: code,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired password reset code' });
+    }
+
+    // Set new password (will be hashed automatically by userSchema's pre('save') hook)
+    user.password = newPassword;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpire = null;
+    await user.save();
+
+    res.json({ message: 'Password reset successful! You can now log in with your new password.' });
+  } catch (err) {
+    next(err);
+  }
+};

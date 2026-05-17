@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema({
   avatar: { type: String, default: null },
   currency: { type: String, default: '₹' },
   balance: { type: Number, default: 45000 },
+  resetPasswordToken: { type: String, default: null },
+  resetPasswordExpire: { type: Date, default: null },
 }, {
   timestamps: true,
 });
